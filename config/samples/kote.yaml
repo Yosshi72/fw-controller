@@ -1,0 +1,18 @@
+apiVersion: samplecontroller.yossy.vsix.wide.ad.jp/v1
+kind: FwLet
+metadata:
+  labels:
+    app.kubernetes.io/name: fwlet
+    app.kubernetes.io/instance: fwlet-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: fwlet-sample
+spec:
+  # TODO(user): Add fields here
+  trustif: eth-a
+  untrustif: eth-b
+  mgmtaddressrange:
+    - 2001:db8:10:10::/64
+    - 2001:db8:10:20::/64
+    - 2001:db8:10:30::/64

@@ -1,0 +1,31 @@
+# permissions for end users to edit fwmasters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: fwmaster-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: fw-controller
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: fwmaster-editor-role
+rules:
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwmasters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwmasters/status
+  verbs:
+  - get

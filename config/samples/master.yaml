@@ -1,0 +1,21 @@
+apiVersion: samplecontroller.yossy.vsix.wide.ad.jp/v1
+kind: FwMaster
+metadata:
+  labels:
+    app.kubernetes.io/name: fwmaster
+    app.kubernetes.io/instance: fwmaster-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: fwmaster-sample
+spec:
+  # TODO(user): Add fields here
+  region:
+    - kote:
+      trustif: 
+      eth-a
+      untrustif: eth-b
+  mgmtaddressrange:
+    - 2001:db8:10:10::/64
+    - 2001:db8:10:20::/64
+    - 2001:db8:10:30::/64

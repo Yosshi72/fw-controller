@@ -1,0 +1,58 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwlets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwlets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwlets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwmasters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwmasters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - samplecontroller.yossy.vsix.wide.ad.jp
+  resources:
+  - fwmasters/status
+  verbs:
+  - get
+  - patch
+  - update
