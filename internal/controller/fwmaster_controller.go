@@ -49,14 +49,22 @@ type FwMasterReconciler struct {
 func (r *FwMasterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// TODO：reconcile処理書く
 
 	return ctrl.Result{}, nil
+}
+
+func (r *FwMasterReconciler) ReconcileFwLet(ctx context.Context, fwm samplecontrollerv1.FwMaster, info samplecontrollerv1.FwLet) error {
+	
+	//TODO：FwMasterの更新内容をFwLetに反映させる
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *FwMasterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&samplecontrollerv1.FwMaster{}).
+		Owns(&samplecontrollerv1.FwLet{}).
 		Complete(r)
 }

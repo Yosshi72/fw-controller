@@ -65,12 +65,15 @@ func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf []s
 	if err != nil {
 		return fmt.Errorf("failed to parse the JSON: %v", err)
 	}
-
+	
+	// interfacesの更新
 	trustif, untrustif := newTrustIf, newUntrustIf
 	err = updateZone(data.Interfaces, trustif, untrustif)
 	if err != nil {
 		return fmt.Errorf("failed to update zone: %v", err)
 	}
+
+	// TODO MgmtAddressRangeの追加
 
 	// 構造体をJSON形式に変換
 	newData, err := json.MarshalIndent(data, "", "    ")
@@ -84,7 +87,6 @@ func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf []s
 		return  fmt.Errorf("failed to write to configuration file: %v", err)
 	}
 
-	// TODO MgmtAddressRangeの追加
 
 	fmt.Println("Success: Update configuration")
 	return nil
@@ -126,6 +128,11 @@ func updateZone(zoneMap map[string]interface{}, trustZone []string, untrustZone 
 			return fmt.Errorf("untrust_zone key not found in zoneMap")
 		}
 
+		return nil
+	}
+
+	// どちらの変更もなかった場合
+	if len(trustZone) == 0 && untrustZone == "" {
 		return nil
 	}
 

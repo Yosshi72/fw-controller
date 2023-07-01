@@ -88,7 +88,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// 	return ctrl.Result{}, nil
 	// }
 
-	trustIf, untrustIf, mgmtAddr, err := getInterface(containerName)
+	trustIf, untrustIf, _, err := getInterface(containerName)
 	if err != nil {
 		log.Error(err, "msg", "line", util.LINE())
 		return ctrl.Result{}, err
@@ -128,7 +128,8 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		bgs.Status.UntrustIf = currentUntrustIf
 		res.StatusUpdated = true
 	}
-
+	//TODO: MgmtAddressRangeのUpdate処理
+	
 	if res.SpecUpdated {
 		if err := r.Update(ctx, &bgs); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
