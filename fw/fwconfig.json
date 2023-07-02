@@ -1,0 +1,11 @@
+{
+    "netns": "vSIX",
+    "interfaces": {
+        "trust_zone": [
+            "downlink",
+            "test1",
+            "test2"
+        ],
+        "untrust_zone": "vsix-bb"
+    }
+}
