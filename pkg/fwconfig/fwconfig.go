@@ -10,6 +10,7 @@ import (
 type Configuration struct {
 	Netns      string                 `json:"netns"`
 	Interfaces map[string]interface{} `json:"interfaces"`
+	PermittedInboundNW []string `json:"inbound_allowed_network"`
 }
 
 func ConfigReader(configFile string) ([]string, string, []string, error) {
@@ -46,13 +47,18 @@ func ConfigReader(configFile string) ([]string, string, []string, error) {
 		return nil, "", nil, fmt.Errorf("untrust_zone is not a valid string")
 	}
 
-	// TODO: get MgmtAddressRange elements
+	// get MgmtAddressRange elements
+	nwList := data.PermittedInboundNW
+	var addressList []string
+	for _, value := range nwList {
+		addressList = append(addressList, value)
+	}
 	
-	return trustZone, untrustZone, nil, nil
+	return trustZone, untrustZone, addressList, nil
 }
 
 
-func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf []string) (error) {
+func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) (error) {
 	// read configutation
 	file, err := ioutil.ReadFile(configFile)
 	if err != nil {
@@ -73,7 +79,9 @@ func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf []s
 		return fmt.Errorf("failed to update zone: %v", err)
 	}
 
-	// TODO MgmtAddressRangeの追加
+	// inbound_allowed_networkの更新
+	// TODO: エラーハンドリング
+	data.PermittedInboundNW = newMgmtAddr
 
 	// 構造体をJSON形式に変換
 	newData, err := json.MarshalIndent(data, "", "    ")

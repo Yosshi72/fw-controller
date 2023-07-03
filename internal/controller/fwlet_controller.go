@@ -29,7 +29,7 @@ import (
 
 	"github.com/Yosshi72/fw-controller/pkg/util"
 	"github.com/Yosshi72/fw-controller/pkg/fwconfig"
-	// "github.com/Yosshi72/fw-controller/pkg/executer"
+	"github.com/Yosshi72/fw-controller/pkg/executer"
 	samplecontrollerv1 "github.com/Yosshi72/fw-controller/api/v1"
 )
 
@@ -88,7 +88,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// 	return ctrl.Result{}, nil
 	// }
 
-	trustIf, untrustIf, _, err := getInterface(containerName)
+	trustIf, untrustIf, mgmtAddr, err := getConfig(containerName)
 	if err != nil {
 		log.Error(err, "msg", "line", util.LINE())
 		return ctrl.Result{}, err
@@ -98,20 +98,20 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	changedTrustIf,changedUntrustIf:= false, false
 	if (!fwconfig.MatchElements(trustIf,bgs.Spec.TrustIf)) && (untrustIf != bgs.Spec.UntrustIf) {
 		newTrustIf, newUntrustIf := bgs.Spec.TrustIf, bgs.Spec.UntrustIf
-		setInterface(containerName, newUntrustIf, newTrustIf)
+		setConfig(containerName, newUntrustIf, newTrustIf, nil)
 		changedTrustIf, changedUntrustIf = true, true
 	} else if untrustIf != bgs.Spec.UntrustIf {
 		newUntrustIf := bgs.Spec.UntrustIf
-		setInterface(containerName, newUntrustIf, nil)
+		setConfig(containerName, newUntrustIf, nil, nil)
 		changedUntrustIf = true
 	} else if !fwconfig.MatchElements(trustIf,bgs.Spec.TrustIf) {
 		newTrustIf := bgs.Spec.TrustIf
-		setInterface(containerName, "", newTrustIf)
+		setConfig(containerName, "", newTrustIf, nil)
 		changedTrustIf = true
 	}
 
 	if changedTrustIf {
-		currentTrustIf, _, _, err := getInterface(containerName)
+		currentTrustIf, _, _, err := getConfig(containerName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
@@ -120,7 +120,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		res.StatusUpdated = true
 	}
 	if changedUntrustIf {
-		_, currentUntrustIf, _, err := getInterface(containerName)
+		_, currentUntrustIf, _, err := getConfig(containerName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
@@ -128,7 +128,22 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		bgs.Status.UntrustIf = currentUntrustIf
 		res.StatusUpdated = true
 	}
-	//TODO: MgmtAddressRangeのUpdate処理
+
+	changedMgmtAddr := false
+	if !fwconfig.MatchElements(mgmtAddr, bgs.Spec.MgmtAddressRange) {
+		newMgmtAddr := bgs.Spec.MgmtAddressRange
+		setConfig(containerName, "", nil, newMgmtAddr)
+		changedMgmtAddr = true
+	}
+	if changedMgmtAddr {
+		_, _, currentMgmtAddr, err := getConfig(containerName)
+		if err != nil {
+			log.Error(err, "msg", "line", util.LINE())
+			return ctrl.Result{}, err
+		}
+		bgs.Status.MgmtAddressRange = currentMgmtAddr
+		res.StatusUpdated = true
+	}
 	
 	if res.SpecUpdated {
 		if err := r.Update(ctx, &bgs); err != nil {
@@ -146,7 +161,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{}, nil
 }
 
-func getInterface(containerName string) ([]string, string, []string, error) {
+func getConfig(containerName string) ([]string, string, []string, error) {
 	trustIn, untrustIn, mgmtAddr, err := fwconfig.ConfigReader("configファイルのパスを入れる")
 
 	if err != nil {
@@ -156,15 +171,19 @@ func getInterface(containerName string) ([]string, string, []string, error) {
 	return trustIn, untrustIn, mgmtAddr,  nil
 }
 
-func setInterface(containerName, untrustif_name string, trustif_name []string) error {
+func setConfig(containerName, untrustif_name string, trustif_name, mgmtaddress []string) error {
+	// update fwconfig.json 
 	err := fwconfig.ConfigWriter(
 		containerName, 
 		"configファイルのパスを入れる", 
 		untrustif_name, 
 		trustif_name,
+		mgmtaddress,
 	)
-	// TODO: setup.shの実行
-	
+	// setup.shの実行
+	err = executer.ExecCommand(
+		containerName,
+	)
 	return err
 }
 

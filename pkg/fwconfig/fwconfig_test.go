@@ -18,6 +18,14 @@ func TestConfigReader(t *testing.T) {
 		wantErr bool
 	}{
 		// TODO: Add test cases.
+		{
+			"case1: read fwconfig.json",
+			args{"../../fw/fwconfig.json"},
+			[]string{"downlink", "test1", "test2"},
+			"vsix-bb",
+			[]string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -45,6 +53,7 @@ func TestConfigWriter(t *testing.T) {
 		configFile    string
 		newUntrustIf  string
 		newTrustIf    []string
+		newMgmtAddr   []string
 	}
 	tests := []struct {
 		name    string
@@ -52,10 +61,15 @@ func TestConfigWriter(t *testing.T) {
 		wantErr bool
 	}{
 		// TODO: Add test cases.
+		{
+			"case1: Unordered match",
+			args{"hogehoge","demo.json","vsix-bb",[]string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf); (err != nil) != tt.wantErr {
+			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
 				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -96,17 +110,17 @@ func TestMatchElements(t *testing.T) {
 	}{
 		{
 			"case1: Unordered match",
-			args{[]string{"eth-a","eth-b","eth-c"},[]string{"eth-c","eth-a","eth-b"}},
+			args{[]string{"eth-a", "eth-b", "eth-c"}, []string{"eth-c", "eth-a", "eth-b"}},
 			true,
 		},
 		{
 			"case2: Different number of elements",
-			args{[]string{"eth-a","eth-b","eth-c"},[]string{"eth-a","eth-b"}},
+			args{[]string{"eth-a", "eth-b", "eth-c"}, []string{"eth-a", "eth-b"}},
 			false,
 		},
 		{
 			"case3: Elements have different values",
-			args{[]string{"eth-a","eth-b","eth-c"},[]string{"eth-c","eth-A","eth-b"}},
+			args{[]string{"eth-a", "eth-b", "eth-c"}, []string{"eth-c", "eth-A", "eth-b"}},
 			false,
 		},
 	}

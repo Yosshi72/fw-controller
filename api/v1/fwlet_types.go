@@ -29,7 +29,7 @@ type FwLetSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	TrustIf          []string           `json:"trustif"` //下流
 	UntrustIf        string             `json:"untrustif"` //上流
-	MgmtAddressRange []MgmtAddressRange `json:"mgmtaddressrange"`
+	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
 
 // FwLetStatus defines the observed state of FwLet
@@ -39,10 +39,9 @@ type FwLetStatus struct {
 
 	TrustIf          []string           `json:"trustif"`
 	UntrustIf        string              `json:"untrustif"`
-	MgmtAddressRange []MgmtAddressRange `json:"mgmtaddressrange"`
+	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
 
-type MgmtAddressRange string
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

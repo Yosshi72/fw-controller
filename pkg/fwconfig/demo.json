@@ -2,9 +2,9 @@
     "netns": "vSIX",
     "interfaces": {
         "trust_zone": [
-            "downlink",
-            "test1",
-            "test2"
+            "eth-a",
+            "eth-b",
+            "eth-c"
         ],
         "untrust_zone": "vsix-bb"
     },

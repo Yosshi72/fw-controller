@@ -7,10 +7,7 @@ table inet filter {
         # pass from LOCAL_INBOUND_ALLOWED_NETWORK
         ip saddr 203.178.128.0/17 accept; # WIDE-v4
         # ip6 saddr 2001:200::/32 accept; # WIDE-v6
-        ip6 saddr 2001:db8:10:10::/64 accept;
-		ip6 saddr 2001:db8:10:20::/64 accept;
-		ip6 saddr 2001:db8:10:30::/64 accept;
-		
+        #Allowed_Address_PLACE
 
         # pass icmp but rate limit
         ip6 nexthdr icmpv6 limit rate 10/second accept;
@@ -22,12 +19,9 @@ table inet filter {
 
     chain FORWARD {
         type filter hook forward priority 0; policy accept;
-        oifname downlink jump ZONE_TRUST;
-		oifname test1 jump ZONE_TRUST;
-		oifname test2 jump ZONE_TRUST;
-		
+        #FWD_TRUST_IF_PLACE
         # oifname "{TRUST_IF_NAME}" jump ZONE_TRUST;
-        oifname "vsix-bb" jump ZONE_UNTRUST;
+        oifname "{UNTRUST_IF_NAME}" jump ZONE_UNTRUST;
     }
 
     chain ZONE_TRUST {
@@ -35,13 +29,10 @@ table inet filter {
 
         # allow trust zone to trust
         # iifname "{TRUST_IF_NAME}" return;
-        iifname downlink return;
-		iifname test1 return;
-		iifname test2 return;
-		
+        #ZONE_TR_TRUST_IF_PLACE
 
         # jump untrust to trust chain
-        iifname "vsix-bb" jump PAIR_untrust_to_trust;
+        iifname "{UNTRUST_IF_NAME}" jump PAIR_untrust_to_trust;
 
     }
 
@@ -49,14 +40,11 @@ table inet filter {
         ##### untrust zone #####
 
         # allow untrust zone to untrust
-        iifname "vsix-bb" return;
+        iifname "{UNTRUST_IF_NAME}" return;
 
         # jump untrust to trust chain
         # iifname "{TRUST_IF_NAME}" jump PAIR_trust_to_untrust;
-        iifname downlink jump PAIR_trust_to_untrust;
-		iifname test1 jump PAIR_trust_to_untrust;
-		iifname test2 jump PAIR_trust_to_untrust;
-		
+        #ZONE_UTR_TRUST_IF_PLACE
 
     }
 

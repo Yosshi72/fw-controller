@@ -28,7 +28,7 @@ type FwMasterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	RegionGroup      []Region               `json:"regiongroup"`
-	MgmtAddressRange []MgmtAddressRange `json:"mgmtaddressrange"`
+	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
 
 // TODO Interfaceをenumで実装する
@@ -43,7 +43,7 @@ type FwMasterStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	Regions []Region `json:"regions"`
-	MgmtAddressRange []MgmtAddressRange `json:"mgmtaddressrange"`
+	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
 
 // type RegionStatus struct {
