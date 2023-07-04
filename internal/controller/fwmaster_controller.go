@@ -22,8 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	samplecontrollerv1 "github.com/Yosshi72/fw-controller/api/v1"
@@ -72,19 +72,19 @@ func (r *FwMasterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			}
 		}
 		if !foundRegionInStatus {
-			newRegionStatus := samplecontrollerv1.RegionStatus {
-				RegionName: regionSpec.RegionName,
-				TrustIf: regionSpec.TrustIf,
-				UntrustIf: regionSpec.UntrustIf,
+			newRegionStatus := samplecontrollerv1.RegionStatus{
+				RegionName:       regionSpec.RegionName,
+				TrustIf:          regionSpec.TrustIf,
+				UntrustIf:        regionSpec.UntrustIf,
 				MgmtAddressRange: fwm.Spec.MgmtAddressRange,
-				Created: false,
+				Created:          false,
 			}
 			err := r.ReconcileFwLet(ctx, fwm, regionSpec, fwm.Spec.MgmtAddressRange)
 			if err != nil {
 				log.Error(err, "msg", "line", util.LINE())
 				return ctrl.Result{Requeue: true}, err
 			}
-			newRegionStatus.Created = true 
+			newRegionStatus.Created = true
 			fwm.Status.Regions = append(fwm.Status.Regions, newRegionStatus)
 			allok = false
 			res.StatusUpdated = true

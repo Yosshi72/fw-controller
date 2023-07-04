@@ -63,7 +63,7 @@ func TestConfigWriter(t *testing.T) {
 		// TODO: Add test cases.
 		{
 			"case1: Unordered match",
-			args{"hogehoge","demo.json","vsix-bb",[]string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
+			args{"hogehoge", "demo.json", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
 			false,
 		},
 	}

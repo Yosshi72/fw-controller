@@ -10,11 +10,12 @@ metadata:
   name: fwmaster-sample
 spec:
   # TODO(user): Add fields here
-  region:
-    - kote:
+  regions:
+    - regionname: kote
       trustif: 
-      eth-a
-      untrustif: eth-b
+      - eth-a
+      - eth-b
+      untrustif: vsix-bb
   mgmtaddressrange:
     - 2001:db8:10:10::/64
     - 2001:db8:10:20::/64

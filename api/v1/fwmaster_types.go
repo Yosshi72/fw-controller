@@ -27,23 +27,23 @@ import (
 type FwMasterSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Regions      []RegionSpec               `json:"regions"`
-	MgmtAddressRange []string `json:"mgmtaddressrange"`
+	Regions          []RegionSpec `json:"regions"`
+	MgmtAddressRange []string     `json:"mgmtaddressrange"`
 }
 
 // TODO Interfaceをenumで実装する
 type RegionSpec struct {
-	RegionName string 	 `json:"regionname"`
-	TrustIf    []string  `json:"trustif"`
-	UntrustIf  string 	 `json:"untrustif"`
+	RegionName string   `json:"regionname"`
+	TrustIf    []string `json:"trustif"`
+	UntrustIf  string   `json:"untrustif"`
 }
 
 type RegionStatus struct {
-	RegionName string 	 `json:"regionname"`
-	TrustIf    []string  `json:"trustif"`
-	UntrustIf  string 	 `json:"untrustif"`
+	RegionName       string   `json:"regionname"`
+	TrustIf          []string `json:"trustif"`
+	UntrustIf        string   `json:"untrustif"`
 	MgmtAddressRange []string `json:"mgmtaddressrange"`
-	Created bool `json:"created"`
+	Created          bool     `json:"created"`
 }
 
 // FwMasterStatus defines the observed state of FwMaster

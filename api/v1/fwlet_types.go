@@ -27,8 +27,8 @@ import (
 type FwLetSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	TrustIf          []string           `json:"trustif"` //下流
-	UntrustIf        string             `json:"untrustif"` //上流
+	TrustIf          []string `json:"trustif"`   //下流
+	UntrustIf        string   `json:"untrustif"` //上流
 	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
 
@@ -37,11 +37,10 @@ type FwLetStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	TrustIf          []string           `json:"trustif"`
-	UntrustIf        string              `json:"untrustif"`
+	TrustIf          []string `json:"trustif"`
+	UntrustIf        string   `json:"untrustif"`
 	MgmtAddressRange []string `json:"mgmtaddressrange"`
 }
-
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

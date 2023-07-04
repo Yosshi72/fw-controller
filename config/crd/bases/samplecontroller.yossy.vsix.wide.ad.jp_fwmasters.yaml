@@ -38,15 +38,18 @@ spec:
                 items:
                   type: string
                 type: array
-              regiongroup:
+              regions:
                 description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
                   Important: Run "make" to regenerate code after modifying this file'
                 items:
+                  description: TODO Interfaceをenumで実装する
                   properties:
                     regionname:
                       type: string
                     trustif:
-                      type: string
+                      items:
+                        type: string
+                      type: array
                     untrustif:
                       type: string
                   required:
@@ -57,7 +60,7 @@ spec:
                 type: array
             required:
             - mgmtaddressrange
-            - regiongroup
+            - regions
             type: object
           status:
             description: FwMasterStatus defines the observed state of FwMaster
@@ -68,13 +71,23 @@ spec:
                   this file'
                 items:
                   properties:
+                    created:
+                      type: boolean
+                    mgmtaddressrange:
+                      items:
+                        type: string
+                      type: array
                     regionname:
                       type: string
                     trustif:
-                      type: string
+                      items:
+                        type: string
+                      type: array
                     untrustif:
                       type: string
                   required:
+                  - created
+                  - mgmtaddressrange
                   - regionname
                   - trustif
                   - untrustif

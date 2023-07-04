@@ -17,8 +17,8 @@ limitations under the License.
 package controller
 
 import (
-	"os"
 	"context"
+	"os"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,10 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/Yosshi72/fw-controller/pkg/util"
-	"github.com/Yosshi72/fw-controller/pkg/fwconfig"
-	"github.com/Yosshi72/fw-controller/pkg/executer"
 	samplecontrollerv1 "github.com/Yosshi72/fw-controller/api/v1"
+	"github.com/Yosshi72/fw-controller/pkg/executer"
+	"github.com/Yosshi72/fw-controller/pkg/fwconfig"
+	"github.com/Yosshi72/fw-controller/pkg/util"
 )
 
 // FwLetReconciler reconciles a FwLet object
@@ -95,8 +95,8 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Interfaceの更新
-	changedTrustIf,changedUntrustIf:= false, false
-	if (!fwconfig.MatchElements(trustIf,fwl.Spec.TrustIf)) && (untrustIf != fwl.Spec.UntrustIf) {
+	changedTrustIf, changedUntrustIf := false, false
+	if (!fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf)) && (untrustIf != fwl.Spec.UntrustIf) {
 		newTrustIf, newUntrustIf := fwl.Spec.TrustIf, fwl.Spec.UntrustIf
 		setConfig(containerName, newUntrustIf, newTrustIf, nil)
 		changedTrustIf, changedUntrustIf = true, true
@@ -104,7 +104,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		newUntrustIf := fwl.Spec.UntrustIf
 		setConfig(containerName, newUntrustIf, nil, nil)
 		changedUntrustIf = true
-	} else if !fwconfig.MatchElements(trustIf,fwl.Spec.TrustIf) {
+	} else if !fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf) {
 		newTrustIf := fwl.Spec.TrustIf
 		setConfig(containerName, "", newTrustIf, nil)
 		changedTrustIf = true
@@ -144,7 +144,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		fwl.Status.MgmtAddressRange = currentMgmtAddr
 		res.StatusUpdated = true
 	}
-	
+
 	if res.SpecUpdated {
 		if err := r.Update(ctx, &fwl); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
@@ -167,16 +167,16 @@ func getConfig(containerName string) ([]string, string, []string, error) {
 	if err != nil {
 		return nil, "", nil, err
 	}
-	
-	return trustIn, untrustIn, mgmtAddr,  nil
+
+	return trustIn, untrustIn, mgmtAddr, nil
 }
 
 func setConfig(containerName, untrustif_name string, trustif_name, mgmtaddress []string) error {
-	// update fwconfig.json 
+	// update fwconfig.json
 	err := fwconfig.ConfigWriter(
-		containerName, 
-		"configファイルのパスを入れる", 
-		untrustif_name, 
+		containerName,
+		"configファイルのパスを入れる",
+		untrustif_name,
 		trustif_name,
 		mgmtaddress,
 	)

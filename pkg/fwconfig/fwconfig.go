@@ -3,14 +3,14 @@ package fwconfig
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"io/ioutil"
+	"sort"
 )
 
 type Configuration struct {
-	Netns      string                 `json:"netns"`
-	Interfaces map[string]interface{} `json:"interfaces"`
-	PermittedInboundNW []string `json:"inbound_allowed_network"`
+	Netns              string                 `json:"netns"`
+	Interfaces         map[string]interface{} `json:"interfaces"`
+	PermittedInboundNW []string               `json:"inbound_allowed_network"`
 }
 
 func ConfigReader(configFile string) ([]string, string, []string, error) {
@@ -53,12 +53,11 @@ func ConfigReader(configFile string) ([]string, string, []string, error) {
 	for _, value := range nwList {
 		addressList = append(addressList, value)
 	}
-	
+
 	return trustZone, untrustZone, addressList, nil
 }
 
-
-func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) (error) {
+func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
 	// read configutation
 	file, err := ioutil.ReadFile(configFile)
 	if err != nil {
@@ -71,7 +70,7 @@ func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, ne
 	if err != nil {
 		return fmt.Errorf("failed to parse the JSON: %v", err)
 	}
-	
+
 	// interfacesの更新
 	trustif, untrustif := newTrustIf, newUntrustIf
 	err = updateZone(data.Interfaces, trustif, untrustif)
@@ -92,9 +91,8 @@ func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, ne
 	// write to configuration
 	err = ioutil.WriteFile(configFile, newData, 0644)
 	if err != nil {
-		return  fmt.Errorf("failed to write to configuration file: %v", err)
+		return fmt.Errorf("failed to write to configuration file: %v", err)
 	}
-
 
 	fmt.Println("Success: Update configuration")
 	return nil

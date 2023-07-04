@@ -10,8 +10,10 @@ metadata:
   name: fwlet-sample
 spec:
   # TODO(user): Add fields here
-  trustif: eth-a
-  untrustif: eth-b
+  trustif: 
+    - eth-a
+    - eth-b
+  untrustif: vsix-bb
   mgmtaddressrange:
     - 2001:db8:10:10::/64
     - 2001:db8:10:20::/64
