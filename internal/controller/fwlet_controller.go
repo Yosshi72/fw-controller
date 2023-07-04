@@ -55,9 +55,9 @@ type FwLetReconciler struct {
 func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	res := util.NewResult()
-	bgs := samplecontrollerv1.FwLet{}
+	fwl := samplecontrollerv1.FwLet{}
 	region := os.Getenv("REGION")
-	if err := r.Get(ctx, req.NamespacedName, &bgs); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &fwl); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -65,22 +65,22 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 	// Ignore reconcile request unrelated to me
-	if bgs.GetName() != region {
+	if fwl.GetName() != region {
 		return ctrl.Result{}, nil
 	}
-	containerName := convContainerName(bgs.GetName())
+	containerName := convContainerName(fwl.GetName())
 
 	// Finalizer
-	// finalizerName := "bg-switcherlet-" + bgs.Name
-	// if bgs.ObjectMeta.DeletionTimestamp.IsZero() {
-	// 	if !controllerutil.ContainsFinalizer(&bgs, finalizerName) {
-	// 		controllerutil.AddFinalizer(&bgs, finalizerName)
+	// finalizerName := "bg-switcherlet-" + fwl.Name
+	// if fwl.ObjectMeta.DeletionTimestamp.IsZero() {
+	// 	if !controllerutil.ContainsFinalizer(&fwl, finalizerName) {
+	// 		controllerutil.AddFinalizer(&fwl, finalizerName)
 	// 		res.SpecUpdated = true
 	// 	}
 	// } else {
-	// 	if controllerutil.ContainsFinalizer(&bgs, finalizerName) {
-	// 		controllerutil.RemoveFinalizer(&bgs, finalizerName)
-	// 		if err := r.Update(ctx, &bgs); err != nil {
+	// 	if controllerutil.ContainsFinalizer(&fwl, finalizerName) {
+	// 		controllerutil.RemoveFinalizer(&fwl, finalizerName)
+	// 		if err := r.Update(ctx, &fwl); err != nil {
 	// 			log.Error(err, "msg", "line", util.LINE())
 	// 			return ctrl.Result{}, err
 	// 		}
@@ -96,16 +96,16 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Interfaceの更新
 	changedTrustIf,changedUntrustIf:= false, false
-	if (!fwconfig.MatchElements(trustIf,bgs.Spec.TrustIf)) && (untrustIf != bgs.Spec.UntrustIf) {
-		newTrustIf, newUntrustIf := bgs.Spec.TrustIf, bgs.Spec.UntrustIf
+	if (!fwconfig.MatchElements(trustIf,fwl.Spec.TrustIf)) && (untrustIf != fwl.Spec.UntrustIf) {
+		newTrustIf, newUntrustIf := fwl.Spec.TrustIf, fwl.Spec.UntrustIf
 		setConfig(containerName, newUntrustIf, newTrustIf, nil)
 		changedTrustIf, changedUntrustIf = true, true
-	} else if untrustIf != bgs.Spec.UntrustIf {
-		newUntrustIf := bgs.Spec.UntrustIf
+	} else if untrustIf != fwl.Spec.UntrustIf {
+		newUntrustIf := fwl.Spec.UntrustIf
 		setConfig(containerName, newUntrustIf, nil, nil)
 		changedUntrustIf = true
-	} else if !fwconfig.MatchElements(trustIf,bgs.Spec.TrustIf) {
-		newTrustIf := bgs.Spec.TrustIf
+	} else if !fwconfig.MatchElements(trustIf,fwl.Spec.TrustIf) {
+		newTrustIf := fwl.Spec.TrustIf
 		setConfig(containerName, "", newTrustIf, nil)
 		changedTrustIf = true
 	}
@@ -116,7 +116,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		bgs.Status.TrustIf = currentTrustIf
+		fwl.Status.TrustIf = currentTrustIf
 		res.StatusUpdated = true
 	}
 	if changedUntrustIf {
@@ -125,13 +125,13 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		bgs.Status.UntrustIf = currentUntrustIf
+		fwl.Status.UntrustIf = currentUntrustIf
 		res.StatusUpdated = true
 	}
 
 	changedMgmtAddr := false
-	if !fwconfig.MatchElements(mgmtAddr, bgs.Spec.MgmtAddressRange) {
-		newMgmtAddr := bgs.Spec.MgmtAddressRange
+	if !fwconfig.MatchElements(mgmtAddr, fwl.Spec.MgmtAddressRange) {
+		newMgmtAddr := fwl.Spec.MgmtAddressRange
 		setConfig(containerName, "", nil, newMgmtAddr)
 		changedMgmtAddr = true
 	}
@@ -141,18 +141,18 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		bgs.Status.MgmtAddressRange = currentMgmtAddr
+		fwl.Status.MgmtAddressRange = currentMgmtAddr
 		res.StatusUpdated = true
 	}
 	
 	if res.SpecUpdated {
-		if err := r.Update(ctx, &bgs); err != nil {
+		if err := r.Update(ctx, &fwl); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
 	}
 	if res.StatusUpdated {
-		if err := r.Status().Update(ctx, &bgs); err != nil {
+		if err := r.Status().Update(ctx, &fwl); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}

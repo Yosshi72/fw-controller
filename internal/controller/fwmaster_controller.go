@@ -19,12 +19,15 @@ package controller
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	samplecontrollerv1 "github.com/Yosshi72/fw-controller/api/v1"
+	"github.com/Yosshi72/fw-controller/pkg/util"
 )
 
 // FwMasterReconciler reconciles a FwMaster object
@@ -47,16 +50,110 @@ type FwMasterReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *FwMasterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	res := util.NewResult()
+	fwm := samplecontrollerv1.FwMaster{}
 
-	// TODO：reconcile処理書く
+	if err := r.Get(ctx, req.NamespacedName, &fwm); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{Requeue: true}, nil
+		}
+		log.Error(err, "msg", "line", util.LINE())
+		return ctrl.Result{Requeue: true}, err
+	}
 
+	// SpecとStatusでRegionに齟齬がないか
+	allok := true
+	for _, regionSpec := range fwm.Spec.Regions {
+		foundRegionInStatus := false
+		for _, regionStatus := range fwm.Status.Regions {
+			if regionStatus.RegionName == regionSpec.RegionName {
+				foundRegionInStatus = true
+			}
+		}
+		if !foundRegionInStatus {
+			newRegionStatus := samplecontrollerv1.RegionStatus {
+				RegionName: regionSpec.RegionName,
+				TrustIf: regionSpec.TrustIf,
+				UntrustIf: regionSpec.UntrustIf,
+				MgmtAddressRange: fwm.Spec.MgmtAddressRange,
+				Created: false,
+			}
+			err := r.ReconcileFwLet(ctx, fwm, regionSpec, fwm.Spec.MgmtAddressRange)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{Requeue: true}, err
+			}
+			newRegionStatus.Created = true 
+			fwm.Status.Regions = append(fwm.Status.Regions, newRegionStatus)
+			allok = false
+			res.StatusUpdated = true
+		}
+	}
+
+	for _, regionSpec := range fwm.Spec.Regions {
+		for _, regionStatus := range fwm.Status.Regions {
+			if regionSpec.RegionName == regionStatus.RegionName {
+				err := r.ReconcileFwLet(ctx, fwm, regionSpec, fwm.Spec.MgmtAddressRange)
+				if err != nil {
+					log.Error(err, "msg", "line", util.LINE())
+					return ctrl.Result{Requeue: true}, err
+				}
+			}
+		}
+	}
+	if !allok {
+		if res.SpecUpdated {
+			if err := r.Update(ctx, &fwm); err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{Requeue: true}, err
+			}
+		}
+		if res.StatusUpdated {
+			if err := r.Status().Update(ctx, &fwm); err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{Requeue: true}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	if res.SpecUpdated {
+		if err := r.Update(ctx, &fwm); err != nil {
+			log.Error(err, "msg", "line", util.LINE())
+			return ctrl.Result{Requeue: true}, err
+		}
+	}
+	if res.StatusUpdated {
+		if err := r.Status().Update(ctx, &fwm); err != nil {
+			log.Error(err, "msg", "line", util.LINE())
+			return ctrl.Result{Requeue: true}, err
+		}
+	}
 	return ctrl.Result{}, nil
 }
 
-func (r *FwMasterReconciler) ReconcileFwLet(ctx context.Context, fwm samplecontrollerv1.FwMaster, info samplecontrollerv1.FwLet) error {
-	
-	//TODO：FwMasterの更新内容をFwLetに反映させる
+func (r *FwMasterReconciler) ReconcileFwLet(ctx context.Context, fwm samplecontrollerv1.FwMaster, regionSpec samplecontrollerv1.RegionSpec, MgmtAddressRange []string) error {
+	// FwMasterからFwLetへ
+	log := log.FromContext(ctx)
+	fwl := samplecontrollerv1.FwLet{}
+	fwl.SetNamespace(fwm.GetNamespace())
+	fwl.SetName(regionSpec.RegionName)
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, &fwl, func() error {
+		fwl.Spec.TrustIf = regionSpec.TrustIf
+		fwl.Spec.UntrustIf = regionSpec.UntrustIf
+		fwl.Spec.MgmtAddressRange = MgmtAddressRange
+		return ctrl.SetControllerReference(&fwm, &fwl, r.Scheme)
+	})
+
+	if err != nil {
+		log.Error(err, "unable to create or update Fwlet resource")
+		return err
+	}
+	if op != controllerutil.OperationResultNone {
+		log.Info("reconcile FwLet successfully", "op", op)
+	}
 
 	return nil
 }
