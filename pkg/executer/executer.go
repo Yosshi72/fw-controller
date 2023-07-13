@@ -1,20 +1,15 @@
 package executer
 
 import (
-	"fmt"
-	"github.com/mattn/go-pipeline"
+	"os/exec"
 )
 
 func ExecCommand(containerName string) error {
-	// setup.shのパス
-	commands := []string{
-		"docker", "exec", containerName, "bash", "-c", "source setup.sh",
-	}
+	netns := "vSIX"
+	scriptPath := "../../fw/fw.rule"
 
-	fmt.Println(commands)
-	_, err := pipeline.Output(commands)
-	if err != nil {
-		fmt.Println(err)
-	}
+	cmd := exec.Command("ip", "netns", "exec", netns, "nft", "-f", scriptPath)
+	err := cmd.Run()
+	
 	return err
 }
