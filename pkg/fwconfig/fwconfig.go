@@ -1,10 +1,12 @@
 package fwconfig
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
-	"io/ioutil"
+	// "io/ioutil"
+	"os"
 	"sort"
+	"regexp"
 )
 
 type Configuration struct {
@@ -13,90 +15,84 @@ type Configuration struct {
 	PermittedInboundNW []string               `json:"inbound_allowed_network"`
 }
 
-func ConfigReader(configFile string) ([]string, string, []string, error) {
+func RulesReader(filePath string) ([]string, string, []string, error) {
 	// read configutation
-	file, err := ioutil.ReadFile(configFile)
+	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, "", nil, fmt.Errorf("failed to read config file: %v", err)
+		return nil, "", nil, fmt.Errorf("Failed to open file: %v", err)
 	}
+	defer file.Close()
 
-	// json decode
-	var data Configuration
-	err = json.Unmarshal(file, &data)
-	if err != nil {
-		return nil, "", nil, fmt.Errorf("failed to parse the JSON: %v", err)
-	}
+	// 正規化パターン
+	ip6Regex := regexp.MustCompile(`^[\s\t]*ip6 saddr ([\w:\/]+) accept` )
+	trustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w]+) jump ZONE_TRUST`)
+	untrustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w-]+) jump ZONE_UNTRUST`)
 
-	// get TrustZone elements
-	trustZoneInterfaces, ok := data.Interfaces["trust_zone"].([]interface{})
-	if !ok {
-		return nil, "", nil, fmt.Errorf("trust_zone is not a valid array")
-	}
-	var trustZone []string
-	for _, value := range trustZoneInterfaces {
-		if strValue, ok := value.(string); ok {
-			trustZone = append(trustZone, strValue)
-		} else {
-			return nil, "", nil, fmt.Errorf("trust_zone contains non-string values")
+	scanner := bufio.NewScanner(file)
+	var ipv6Addresses []string
+	var trustIf []string
+	var untrustIf string
+
+	// 抽出
+	for scanner.Scan() {
+		line := scanner.Text()
+		matchIP6 := ip6Regex.FindStringSubmatch(line)
+		if matchIP6 != nil {
+			ipv6Addresses = append(ipv6Addresses, matchIP6[1])
+		}
+		matchTrustIf := trustIfRegex.FindStringSubmatch(line)
+		if matchTrustIf != nil {
+			trustIf = append(trustIf, matchTrustIf[1])
+		}
+		matchUntrustIf := untrustIfRegex.FindStringSubmatch(line)
+		if matchUntrustIf != nil {
+			untrustIf = matchUntrustIf[1]
 		}
 	}
 
-	// get UnTrust Zone element
-	untrustZone, ok := data.Interfaces["untrust_zone"].(string)
-	if !ok {
-		return nil, "", nil, fmt.Errorf("untrust_zone is not a valid string")
-	}
-
-	// get MgmtAddressRange elements
-	nwList := data.PermittedInboundNW
-	var addressList []string
-	for _, value := range nwList {
-		addressList = append(addressList, value)
-	}
-
-	return trustZone, untrustZone, addressList, nil
+	return trustIf, untrustIf, ipv6Addresses, nil
 }
 
-func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
-	// read configutation
-	file, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return fmt.Errorf("failed to read config file: %v", err)
-	}
+// func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
+// 	// read configutation
+// 	file, err := ioutil.ReadFile(configFile)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to read config file: %v", err)
+// 	}
 
-	// json decode
-	var data Configuration
-	err = json.Unmarshal(file, &data)
-	if err != nil {
-		return fmt.Errorf("failed to parse the JSON: %v", err)
-	}
+// 	// json decode
+// 	var data Configuration
+// 	err = json.Unmarshal(file, &data)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to parse the JSON: %v", err)
+// 	}
 
-	// interfacesの更新
-	trustif, untrustif := newTrustIf, newUntrustIf
-	err = updateZone(data.Interfaces, trustif, untrustif)
-	if err != nil {
-		return fmt.Errorf("failed to update zone: %v", err)
-	}
+// 	// interfacesの更新
+// 	trustif, untrustif := newTrustIf, newUntrustIf
+// 	err = updateZone(data.Interfaces, trustif, untrustif)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update zone: %v", err)
+// 	}
 
-	// inbound_allowed_networkの更新
-	// TODO: エラーハンドリング
-	data.PermittedInboundNW = newMgmtAddr
+// 	// inbound_allowed_networkの更新
+// 	// TODO: エラーハンドリング
+// 	data.PermittedInboundNW = newMgmtAddr
 
-	// 構造体をJSON形式に変換
-	newData, err := json.MarshalIndent(data, "", "    ")
-	if err != nil {
-		return fmt.Errorf("failed to convert to JSON: %v", err)
-	}
+// 	// 構造体をJSON形式に変換
+// 	newData, err := json.MarshalIndent(data, "", "    ")
+// 	if err != nil {
+// 		return fmt.Errorf("failed to convert to JSON: %v", err)
+// 	}
 
-	// write to configuration
-	err = ioutil.WriteFile(configFile, newData, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write to configuration file: %v", err)
-	}
+// 	// write to configuration
+// 	err = ioutil.WriteFile(configFile, newData, 0644)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to write to configuration file: %v", err)
+// 	}
 
-	fmt.Println("Success: Update configuration")
-	return nil
-}
+// 	fmt.Println("Success: Update configuration")
+// 	return nil
+// }
 
 // trust_zoneとuntrust_zoneのupdate
 func updateZone(zoneMap map[string]interface{}, trustZone []string, untrustZone string) error {

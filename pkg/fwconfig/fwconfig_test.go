@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestConfigReader(t *testing.T) {
+func TestRulesReader(t *testing.T) {
 	type args struct {
 		configFile string
 	}
@@ -17,10 +17,9 @@ func TestConfigReader(t *testing.T) {
 		want2   []string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
 		{
-			"case1: read fwconfig.json",
-			args{"../../fw/fwconfig.json"},
+			"case1: read fw.rules",
+			args{"../../fw/fw.rule"},
 			[]string{"downlink", "test1", "test2"},
 			"vsix-bb",
 			[]string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"},
@@ -29,52 +28,52 @@ func TestConfigReader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, got2, err := ConfigReader(tt.args.configFile)
+			got, got1, got2, err := RulesReader(tt.args.configFile)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ConfigReader() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("RulesReader() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ConfigReader() got = %v, want %v", got, tt.want)
+				t.Errorf("RulesReader() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("ConfigReader() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("RulesReader() got1 = %v, want %v", got1, tt.want1)
 			}
 			if !reflect.DeepEqual(got2, tt.want2) {
-				t.Errorf("ConfigReader() got2 = %v, want %v", got2, tt.want2)
+				t.Errorf("RulesReader() got2 = %v, want %v", got2, tt.want2)
 			}
 		})
 	}
 }
 
-func TestConfigWriter(t *testing.T) {
-	type args struct {
-		containername string
-		configFile    string
-		newUntrustIf  string
-		newTrustIf    []string
-		newMgmtAddr   []string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-		{
-			"case1: Unordered match",
-			args{"hogehoge", "demo.json", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
-				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
+// func TestConfigWriter(t *testing.T) {
+// 	type args struct {
+// 		containername string
+// 		configFile    string
+// 		newUntrustIf  string
+// 		newTrustIf    []string
+// 		newMgmtAddr   []string
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		args    args
+// 		wantErr bool
+// 	}{
+// 		// TODO: Add test cases.
+// 		{
+// 			"case1: Unordered match",
+// 			args{"hogehoge", "demo.json", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
+// 			false,
+// 		},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
+// 				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
+// 			}
+// 		})
+// 	}
+// }
 
 func Test_updateZone(t *testing.T) {
 	type args struct {

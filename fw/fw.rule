@@ -26,8 +26,8 @@ table inet filter {
 		oifname test1 jump ZONE_TRUST;
 		oifname test2 jump ZONE_TRUST;
 		
-        # oifname "{TRUST_IF_NAME}" jump ZONE_TRUST;
-        oifname "vsix-bb" jump ZONE_UNTRUST;
+        # oifname {TRUST_IF_NAME} jump ZONE_TRUST;
+        oifname vsix-bb jump ZONE_UNTRUST;
     }
 
     chain ZONE_TRUST {
