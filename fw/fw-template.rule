@@ -21,7 +21,7 @@ table inet filter {
         type filter hook forward priority 0; policy accept;
         #FWD_TRUST_IF_PLACE
         # oifname "{TRUST_IF_NAME}" jump ZONE_TRUST;
-        oifname "{UNTRUST_IF_NAME}" jump ZONE_UNTRUST;
+        # oifname "{UNTRUST_IF_NAME}" jump ZONE_UNTRUST;
     }
 
     chain ZONE_TRUST {
@@ -32,7 +32,7 @@ table inet filter {
         #ZONE_TR_TRUST_IF_PLACE
 
         # jump untrust to trust chain
-        iifname "{UNTRUST_IF_NAME}" jump PAIR_untrust_to_trust;
+        # iifname "{UNTRUST_IF_NAME}" jump PAIR_untrust_to_trust;
 
     }
 
@@ -40,7 +40,7 @@ table inet filter {
         ##### untrust zone #####
 
         # allow untrust zone to untrust
-        iifname "{UNTRUST_IF_NAME}" return;
+        # iifname "{UNTRUST_IF_NAME}" return;
 
         # jump untrust to trust chain
         # iifname "{TRUST_IF_NAME}" jump PAIR_trust_to_untrust;

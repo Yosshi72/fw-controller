@@ -6,14 +6,9 @@ import (
 	// "io/ioutil"
 	"os"
 	"sort"
+	"strings"
 	"regexp"
 )
-
-type Configuration struct {
-	Netns              string                 `json:"netns"`
-	Interfaces         map[string]interface{} `json:"interfaces"`
-	PermittedInboundNW []string               `json:"inbound_allowed_network"`
-}
 
 func RulesReader(filePath string) ([]string, string, []string, error) {
 	// read configutation
@@ -53,46 +48,77 @@ func RulesReader(filePath string) ([]string, string, []string, error) {
 	return trustIf, untrustIf, ipv6Addresses, nil
 }
 
-// func ConfigWriter(containername, configFile, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
-// 	// read configutation
-// 	file, err := ioutil.ReadFile(configFile)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to read config file: %v", err)
-// 	}
+func ConfigWriter(containername, filePath, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
+	templateFilePath := "../../fw/fw-template.rule" // テンプレートファイルのパスを適切に指定してください
+	outputFilePath := filePath            // 出力ファイルのパスを適切に指定してください
+	ipv6Addresses := newMgmtAddr
+	trustIf := newTrustIf
+	untrustIf := newUntrustIf
 
-// 	// json decode
-// 	var data Configuration
-// 	err = json.Unmarshal(file, &data)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to parse the JSON: %v", err)
-// 	}
+	// テンプレートファイルを開く
+	templateFile, err := os.Open(templateFilePath)
+	if err != nil {
+		return fmt.Errorf("Failed to open template file: %s", err)
+	}
+	defer templateFile.Close()
 
-// 	// interfacesの更新
-// 	trustif, untrustif := newTrustIf, newUntrustIf
-// 	err = updateZone(data.Interfaces, trustif, untrustif)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to update zone: %v", err)
-// 	}
+	// 出力ファイルを作成または上書きする
+	outputFile, err := os.Create(outputFilePath)
+	if err != nil {
+		return fmt.Errorf("Failed to create output file: %s", err)
+	}
+	defer outputFile.Close()
 
-// 	// inbound_allowed_networkの更新
-// 	// TODO: エラーハンドリング
-// 	data.PermittedInboundNW = newMgmtAddr
+	scanner := bufio.NewScanner(templateFile)
+	writer := bufio.NewWriter(outputFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
+			return fmt.Errorf("Failed to write to output file: %s", err)
+		}
+		// replace v6 address
+		if strings.Contains(line, "#Allowed_Address_PLACE") {
+			for _, addr := range ipv6Addresses {
+				newLine := fmt.Sprintf("\t\tip6 saddr %s accept;", addr)
+				_, err := writer.WriteString(newLine + "\n")
+				if err != nil {
+					return fmt.Errorf("Failed to write to output file: %s", err)
+				}
+			}
+		}
+		// replace trustIf, unTrustIf
+		if strings.Contains(line, "TRUST_IF_NAME") {
+			if strings.Contains(line, "UNTRUST_IF_NAME") {
+				newLine := strings.Replace(line, "{UNTRUST_IF_NAME}", untrustIf, -1)
+				newLine = strings.Replace(newLine, "# ", "", -1)
+				_, err := writer.WriteString(newLine + "\n")
+				if err != nil {
+					return fmt.Errorf("Failed to write to output file: %s", err)
+				}
+			} else {
+				for _, tif := range trustIf {
+					newLine := strings.Replace(line, "{TRUST_IF_NAME}", tif, -1)
+					newLine = strings.Replace(newLine, "# ", "", -1)
+					_, err := writer.WriteString(newLine + "\n")
+					if err != nil {
+						return fmt.Errorf("Failed to write to output file: %s", err)
+					}
+				}
+			}
+		}
+	}
 
-// 	// 構造体をJSON形式に変換
-// 	newData, err := json.MarshalIndent(data, "", "    ")
-// 	if err != nil {
-// 		return fmt.Errorf("failed to convert to JSON: %v", err)
-// 	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("Failed to read template file: %s", err)
+	}
 
-// 	// write to configuration
-// 	err = ioutil.WriteFile(configFile, newData, 0644)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to write to configuration file: %v", err)
-// 	}
-
-// 	fmt.Println("Success: Update configuration")
-// 	return nil
-// }
+	err = writer.Flush()
+	if err != nil {
+		return fmt.Errorf("Failed to flush writer: %s", err)
+	}
+	return nil
+}
 
 // trust_zoneとuntrust_zoneのupdate
 func updateZone(zoneMap map[string]interface{}, trustZone []string, untrustZone string) error {

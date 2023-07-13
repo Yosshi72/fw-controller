@@ -46,34 +46,34 @@ func TestRulesReader(t *testing.T) {
 	}
 }
 
-// func TestConfigWriter(t *testing.T) {
-// 	type args struct {
-// 		containername string
-// 		configFile    string
-// 		newUntrustIf  string
-// 		newTrustIf    []string
-// 		newMgmtAddr   []string
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		wantErr bool
-// 	}{
-// 		// TODO: Add test cases.
-// 		{
-// 			"case1: Unordered match",
-// 			args{"hogehoge", "demo.json", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
-// 			false,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
-// 				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
+func TestConfigWriter(t *testing.T) {
+	type args struct {
+		containername string
+		configFile    string
+		newUntrustIf  string
+		newTrustIf    []string
+		newMgmtAddr   []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			"case1: Unordered match",
+			args{"hogehoge", "demo.rule", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
+				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
 
 func Test_updateZone(t *testing.T) {
 	type args struct {
