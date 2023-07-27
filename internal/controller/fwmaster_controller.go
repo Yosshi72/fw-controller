@@ -139,7 +139,6 @@ func (r *FwMasterReconciler) ReconcileFwLet(ctx context.Context, fwm samplecontr
 	fwl := samplecontrollerv1.FwLet{}
 	fwl.SetNamespace(fwm.GetNamespace())
 	fwl.SetName(regionSpec.RegionName)
-
 	op, err := ctrl.CreateOrUpdate(ctx, r.Client, &fwl, func() error {
 		fwl.Spec.TrustIf = regionSpec.TrustIf
 		fwl.Spec.UntrustIf = regionSpec.UntrustIf

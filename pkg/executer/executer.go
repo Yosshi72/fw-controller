@@ -6,10 +6,10 @@ import (
 
 func ExecCommand(containerName string) error {
 	netns := "vSIX"
-	scriptPath := "../../fw/fw.rule"
+	scriptPath := "/etc/nftables/fw-template.rule"
 
 	cmd := exec.Command("ip", "netns", "exec", netns, "nft", "-f", scriptPath)
 	err := cmd.Run()
-	
+
 	return err
 }

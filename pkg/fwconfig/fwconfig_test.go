@@ -19,10 +19,10 @@ func TestRulesReader(t *testing.T) {
 	}{
 		{
 			"case1: read fw.rules",
-			args{"../../fw/fw.rule"},
-			[]string{"downlink", "test1", "test2"},
+			args{"demo.rule"},
+			[]string{"eth-a", "eth-b", "eth-c"},
 			"vsix-bb",
-			[]string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"},
+			nil,
 			false,
 		},
 	}
@@ -46,35 +46,6 @@ func TestRulesReader(t *testing.T) {
 	}
 }
 
-func TestConfigWriter(t *testing.T) {
-	type args struct {
-		containername string
-		configFile    string
-		newUntrustIf  string
-		newTrustIf    []string
-		newMgmtAddr   []string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-		{
-			"case1: Unordered match",
-			args{"hogehoge", "demo.rule", "vsix-bb", []string{"eth-a", "eth-b", "eth-c"}, []string{"2001:db8:10:10::/64", "2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := ConfigWriter(tt.args.containername, tt.args.configFile, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
-				t.Errorf("ConfigWriter() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func Test_updateZone(t *testing.T) {
 	type args struct {
 		zoneMap     map[string]interface{}
@@ -90,7 +61,7 @@ func Test_updateZone(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := updateZone(tt.args.zoneMap, tt.args.trustZone, tt.args.untrustZone); (err != nil) != tt.wantErr {
+			if err := UpdateZone(tt.args.zoneMap, tt.args.trustZone, tt.args.untrustZone); (err != nil) != tt.wantErr {
 				t.Errorf("updateZone() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -127,6 +98,42 @@ func TestMatchElements(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := MatchElements(tt.args.slice1, tt.args.slice2); got != tt.want {
 				t.Errorf("MatchElements() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_RuleUpdate(t *testing.T) {
+	type args struct {
+		containername string
+		tmpPath       string
+		filePath      string
+		newUntrustIf  string
+		newTrustIf    []string
+		newMgmtAddr   []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			"case1: read fw.rules",
+			args{
+				"container1", 
+				"demo-template.rule", 
+				"demo.rule", 
+				"vsix-bb",
+				[]string{"eth-a","eth-b"},
+				[]string{"2001:db8:10:20::/64", "2001:db8:10:30::/64"}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := RuleUpdate(tt.args.containername, tt.args.tmpPath, tt.args.filePath, tt.args.newUntrustIf, tt.args.newTrustIf, tt.args.newMgmtAddr); (err != nil) != tt.wantErr {
+				t.Errorf("RuleUpdate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

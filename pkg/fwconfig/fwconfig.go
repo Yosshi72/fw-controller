@@ -3,11 +3,12 @@ package fwconfig
 import (
 	"bufio"
 	"fmt"
+
 	// "io/ioutil"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
-	"regexp"
 )
 
 func RulesReader(filePath string) ([]string, string, []string, error) {
@@ -19,9 +20,9 @@ func RulesReader(filePath string) ([]string, string, []string, error) {
 	defer file.Close()
 
 	// 正規化パターン
-	ip6Regex := regexp.MustCompile(`^[\s\t]*ip6 saddr ([\w:\/]+) accept` )
-	trustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w]+) jump ZONE_TRUST`)
-	untrustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w-]+) jump ZONE_UNTRUST`)
+	ip6Regex := regexp.MustCompile(`^[\s\t]*ip6 saddr ([\w:\/]+) accept`)
+	trustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w-"]+) jump ZONE_TRUST`)
+	untrustIfRegex := regexp.MustCompile(`^[\s\t]*oifname ([\w-"]+) jump ZONE_UNTRUST`)
 
 	scanner := bufio.NewScanner(file)
 	var ipv6Addresses []string
@@ -37,20 +38,22 @@ func RulesReader(filePath string) ([]string, string, []string, error) {
 		}
 		matchTrustIf := trustIfRegex.FindStringSubmatch(line)
 		if matchTrustIf != nil {
-			trustIf = append(trustIf, matchTrustIf[1])
+			removeQuo := strings.TrimPrefix(strings.TrimSuffix(matchTrustIf[1], "\""), "\"")
+			trustIf = append(trustIf, removeQuo)
 		}
 		matchUntrustIf := untrustIfRegex.FindStringSubmatch(line)
 		if matchUntrustIf != nil {
-			untrustIf = matchUntrustIf[1]
+			removeQuo := strings.TrimPrefix(strings.TrimSuffix(matchUntrustIf[1], "\""), "\"")
+			untrustIf = removeQuo
 		}
 	}
 
 	return trustIf, untrustIf, ipv6Addresses, nil
 }
 
-func ConfigWriter(containername, filePath, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
-	templateFilePath := "../../fw/fw-template.rule" // テンプレートファイルのパスを適切に指定してください
-	outputFilePath := filePath            // 出力ファイルのパスを適切に指定してください
+func RuleUpdate(containername, tmpPath, filePath, newUntrustIf string, newTrustIf, newMgmtAddr []string) error {
+	templateFilePath := tmpPath // テンプレートファイルのパスを適切に指定してください
+	outputFilePath := filePath                           // 出力ファイルのパスを適切に指定してください
 	ipv6Addresses := newMgmtAddr
 	trustIf := newTrustIf
 	untrustIf := newUntrustIf
@@ -87,16 +90,9 @@ func ConfigWriter(containername, filePath, newUntrustIf string, newTrustIf, newM
 				}
 			}
 		}
-		// replace trustIf, unTrustIf
+		// replace trustIf
 		if strings.Contains(line, "TRUST_IF_NAME") {
-			if strings.Contains(line, "UNTRUST_IF_NAME") {
-				newLine := strings.Replace(line, "{UNTRUST_IF_NAME}", untrustIf, -1)
-				newLine = strings.Replace(newLine, "# ", "", -1)
-				_, err := writer.WriteString(newLine + "\n")
-				if err != nil {
-					return fmt.Errorf("Failed to write to output file: %s", err)
-				}
-			} else {
+			if !strings.Contains(line, "UNTRUST_IF_NAME") {
 				for _, tif := range trustIf {
 					newLine := strings.Replace(line, "{TRUST_IF_NAME}", tif, -1)
 					newLine = strings.Replace(newLine, "# ", "", -1)
@@ -104,6 +100,13 @@ func ConfigWriter(containername, filePath, newUntrustIf string, newTrustIf, newM
 					if err != nil {
 						return fmt.Errorf("Failed to write to output file: %s", err)
 					}
+				}
+			}else {
+				newLine := strings.Replace(line, "{UNTRUST_IF_NAME}", untrustIf, -1)
+				newLine = strings.Replace(newLine, "# ", "", -1)
+				_, err := writer.WriteString(newLine + "\n")
+				if err != nil {
+					return fmt.Errorf("Failed to write to output file: %s", err)
 				}
 			}
 		}
@@ -121,7 +124,7 @@ func ConfigWriter(containername, filePath, newUntrustIf string, newTrustIf, newM
 }
 
 // trust_zoneとuntrust_zoneのupdate
-func updateZone(zoneMap map[string]interface{}, trustZone []string, untrustZone string) error {
+func UpdateZone(zoneMap map[string]interface{}, trustZone []string, untrustZone string) error {
 	// trustzoneのみが指定された場合、trustzoneを更新する
 	if len(trustZone) > 0 && untrustZone == "" {
 		if _, ok := zoneMap["trust_zone"]; ok {

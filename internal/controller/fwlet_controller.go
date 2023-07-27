@@ -31,6 +31,7 @@ import (
 	"github.com/Yosshi72/fw-controller/pkg/executer"
 	"github.com/Yosshi72/fw-controller/pkg/fwconfig"
 	"github.com/Yosshi72/fw-controller/pkg/util"
+	// "github.com/k0kubun/pp"
 )
 
 // FwLetReconciler reconciles a FwLet object
@@ -57,6 +58,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	res := util.NewResult()
 	fwl := samplecontrollerv1.FwLet{}
 	region := os.Getenv("REGION")
+
 	if err := r.Get(ctx, req.NamespacedName, &fwl); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -69,7 +71,6 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil
 	}
 	containerName := convContainerName(fwl.GetName())
-
 	// Finalizer
 	// finalizerName := "bg-switcherlet-" + fwl.Name
 	// if fwl.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -79,6 +80,8 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// 	}
 	// } else {
 	// 	if controllerutil.ContainsFinalizer(&fwl, finalizerName) {
+	//		TODO:nsのnftablesのrulesを削除する. fw-letが消された場合．
+	// 		TODO:fw-masterが消されたらfw-letを消す
 	// 		controllerutil.RemoveFinalizer(&fwl, finalizerName)
 	// 		if err := r.Update(ctx, &fwl); err != nil {
 	// 			log.Error(err, "msg", "line", util.LINE())
@@ -93,55 +96,61 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		log.Error(err, "msg", "line", util.LINE())
 		return ctrl.Result{}, err
 	}
+	if trustIf == nil && untrustIf == "" && mgmtAddr == nil {
+		fwl.Status.TrustIf = fwl.Spec.TrustIf
+		fwl.Status.UntrustIf = fwl.Spec.UntrustIf
+		fwl.Status.MgmtAddressRange = fwl.Spec.MgmtAddressRange
+		setConfig(containerName, fwl.Status.UntrustIf, fwl.Status.TrustIf, fwl.Status.MgmtAddressRange)
+	}
+
+	trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
 
 	// Interfaceの更新
-	changedTrustIf, changedUntrustIf := false, false
-	if (!fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf)) && (untrustIf != fwl.Spec.UntrustIf) {
-		newTrustIf, newUntrustIf := fwl.Spec.TrustIf, fwl.Spec.UntrustIf
-		setConfig(containerName, newUntrustIf, newTrustIf, nil)
-		changedTrustIf, changedUntrustIf = true, true
-	} else if untrustIf != fwl.Spec.UntrustIf {
-		newUntrustIf := fwl.Spec.UntrustIf
-		setConfig(containerName, newUntrustIf, nil, nil)
-		changedUntrustIf = true
-	} else if !fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf) {
-		newTrustIf := fwl.Spec.TrustIf
-		setConfig(containerName, "", newTrustIf, nil)
-		changedTrustIf = true
+	changedTrustIF := false
+	if !fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf) {
+		newTrustIF := fwl.Spec.TrustIf
+		setConfig(containerName, untrustIf, newTrustIF, mgmtAddr)
+		changedTrustIF = true
 	}
-
-	if changedTrustIf {
-		currentTrustIf, _, _, err := getConfig(containerName)
+	if changedTrustIF {
+		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.TrustIf = currentTrustIf
+		fwl.Status.TrustIf = trustIf
 		res.StatusUpdated = true
 	}
-	if changedUntrustIf {
-		_, currentUntrustIf, _, err := getConfig(containerName)
+
+	changedUntrustIF := false
+	if untrustIf != fwl.Spec.UntrustIf {
+		newUntrustIF := fwl.Spec.UntrustIf
+		setConfig(containerName, newUntrustIF, trustIf, mgmtAddr)
+		changedUntrustIF = true
+	}
+	if changedUntrustIF {
+		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.UntrustIf = currentUntrustIf
+		fwl.Status.UntrustIf = untrustIf
 		res.StatusUpdated = true
 	}
 
 	changedMgmtAddr := false
 	if !fwconfig.MatchElements(mgmtAddr, fwl.Spec.MgmtAddressRange) {
 		newMgmtAddr := fwl.Spec.MgmtAddressRange
-		setConfig(containerName, "", nil, newMgmtAddr)
+		setConfig(containerName, untrustIf, trustIf, newMgmtAddr)
 		changedMgmtAddr = true
 	}
 	if changedMgmtAddr {
-		_, _, currentMgmtAddr, err := getConfig(containerName)
+		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.MgmtAddressRange = currentMgmtAddr
+		fwl.Status.MgmtAddressRange = mgmtAddr
 		res.StatusUpdated = true
 	}
 
@@ -151,6 +160,7 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 	}
+
 	if res.StatusUpdated {
 		if err := r.Status().Update(ctx, &fwl); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
@@ -162,7 +172,8 @@ func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 }
 
 func getConfig(containerName string) ([]string, string, []string, error) {
-	trustIn, untrustIn, mgmtAddr, err := fwconfig.ConfigReader("configファイルのパスを入れる")
+	// TODO: config.jsonのパスを入れる
+	trustIn, untrustIn, mgmtAddr, err := fwconfig.RulesReader("/etc/nftables/fw.rule")
 
 	if err != nil {
 		return nil, "", nil, err
@@ -173,15 +184,18 @@ func getConfig(containerName string) ([]string, string, []string, error) {
 
 func setConfig(containerName, untrustif_name string, trustif_name, mgmtaddress []string) error {
 	// update fwconfig.json
-	err := fwconfig.ConfigWriter(
+	err := fwconfig.RuleUpdate(
 		containerName,
-		"configファイルのパスを入れる",
+		"/etc/nftables/fw-template.rule",
+		"/etc/nftables/fw.rule",
 		untrustif_name,
 		trustif_name,
 		mgmtaddress,
 	)
-	// setup.shの実行
-	err = executer.ExecCommand(
+	if err != nil {
+		return err
+	}
+	err= executer.ExecCommand(
 		containerName,
 	)
 	return err

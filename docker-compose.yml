@@ -1,0 +1,41 @@
+version: '3'
+services:
+  kote:
+    restart: always
+    image: fw-demo:v2
+    container_name: kote
+    environment:
+      - REGION=kote
+      - MADDR=8081
+      - PADDR=9091
+    privileged: true
+    user: "0:0"
+    network_mode: host
+    volumes:
+      - /home/ito/.kube/config:/root/.kube/config
+      - /var/run:/var/run
+      - /proc:/proc
+      - /etc/netns:/etc/netns
+  note:
+    restart: always
+    image: fw-demo:v2
+    # tty: true
+    # stdin_open: true
+    container_name: note
+    environment:
+      - REGION=note
+      - MADDR=8082
+      - PADDR=9092
+    privileged: true
+    user: "0:0"
+    network_mode: host
+    volumes:
+      - /home/ito/.kube/config:/root/.kube/config
+      - /home/ito/fw-controller/fw:/root/fw-config
+      - /var/run:/var/run
+      - /proc:/proc
+      - /etc/netns:/etc/netns
+networks:
+  default:
+    name: kind
+    external: true
