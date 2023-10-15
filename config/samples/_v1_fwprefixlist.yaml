@@ -1,0 +1,32 @@
+apiVersion: vsix.wide.ad.jp/v1
+kind: FwPrefixList
+metadata:
+  labels:
+    app.kubernetes.io/name: fwprefixlist
+    app.kubernetes.io/instance: fwprefixlist-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: vsix
+spec:
+  prefixes:
+    - 2001:200:e00::/40
+
+
+---
+apiVersion: vsix.wide.ad.jp/v1
+kind: FwPrefixList
+metadata:
+  labels:
+    app.kubernetes.io/name: fwprefixlist
+    app.kubernetes.io/instance: fwprefixlist-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: vsix-mgmt
+spec:
+  prefixes:
+    - 2001:200:0:10c0::/64
+    - 2001:200:0:60c0::/64
+    # - 2001:200:0:18c0::/64
+    # - 2001:200:0:74c0::/64

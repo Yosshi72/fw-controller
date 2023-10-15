@@ -1,40 +1,41 @@
 version: '3'
 services:
-  kote:
+  hongo:
     restart: always
-    image: fw-demo:v2
-    container_name: kote
+    image: fw-demo:v6
+    stdin_open: true
+    tty: true
+    container_name: hongo
     environment:
-      - REGION=kote
-      - MADDR=8081
-      - PADDR=9091
+      - REGION=hongo
+      - MADDR=10001
+      - PADDR=12001
+      - NSNAME=vsix-hongo
     privileged: true
     user: "0:0"
     network_mode: host
     volumes:
       - /home/ito/.kube/config:/root/.kube/config
       - /var/run:/var/run
-      - /proc:/proc
-      - /etc/netns:/etc/netns
-  note:
+      - /run/netns:/run/netns
+  komatsu:
     restart: always
-    image: fw-demo:v2
-    # tty: true
-    # stdin_open: true
-    container_name: note
+    image: fw-demo:v6
+    stdin_open: true
+    tty: true
+    container_name: komatsu
     environment:
-      - REGION=note
-      - MADDR=8082
-      - PADDR=9092
+      - REGION=komatsu
+      - MADDR=10002
+      - PADDR=12002
+      - NSNAME=vsix-komatsu
     privileged: true
     user: "0:0"
     network_mode: host
     volumes:
       - /home/ito/.kube/config:/root/.kube/config
-      - /home/ito/fw-controller/fw:/root/fw-config
       - /var/run:/var/run
-      - /proc:/proc
-      - /etc/netns:/etc/netns
+      - /run/netns:/run/netns
 networks:
   default:
     name: kind

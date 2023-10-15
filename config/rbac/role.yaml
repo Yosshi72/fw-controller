@@ -5,9 +5,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwlets
+  - fwrouters
   verbs:
   - create
   - delete
@@ -17,41 +17,15 @@ rules:
   - update
   - watch
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwlets/finalizers
+  - fwrouters/finalizers
   verbs:
   - update
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwlets/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
-  resources:
-  - fwmasters
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
-  resources:
-  - fwmasters/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
-  resources:
-  - fwmasters/status
+  - fwrouters/status
   verbs:
   - get
   - patch

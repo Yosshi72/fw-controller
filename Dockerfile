@@ -2,10 +2,12 @@
 FROM ubuntu:22.04
 ARG TARGETOS
 ARG TARGETARCH
-
 RUN ["apt-get", "update"]
 RUN ["apt-get", "install", "-y", "wget"]
 RUN ["apt-get", "install", "-y", "curl"]
+RUN ["apt-get", "install", "-y", "vim"]
+RUN ["apt-get", "install", "-y", "iproute2"]
+RUN ["apt-get", "install", "-y", "nftables"]
 
 
 WORKDIR /workspace
@@ -25,8 +27,7 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY fw/ /etc/nftables/
-COPY cmd/fw-let/main.go main.go
+COPY cmd/main.go main.go
 COPY api/ api/
 COPY internal/controller/ internal/controller/
 COPY pkg/ pkg/
@@ -35,6 +36,7 @@ COPY pkg/ pkg/
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager main.go
 
 CMD ["./manager"]
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 # FROM gcr.io/distroless/static:nonroot
