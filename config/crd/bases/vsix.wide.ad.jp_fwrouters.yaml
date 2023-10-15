@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: fwmasters.samplecontroller.yossy.vsix.wide.ad.jp
+  name: fwrouters.vsix.wide.ad.jp
 spec:
-  group: samplecontroller.yossy.vsix.wide.ad.jp
+  group: vsix.wide.ad.jp
   names:
-    kind: FwMaster
-    listKind: FwMasterList
-    plural: fwmasters
-    singular: fwmaster
+    kind: FwRouter
+    listKind: FwRouterList
+    plural: fwrouters
+    singular: fwrouter
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: FwMaster is the Schema for the fwmasters API
+        description: FwRouter is the Schema for the fwrouters API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,69 +32,61 @@ spec:
           metadata:
             type: object
           spec:
-            description: FwMasterSpec defines the desired state of FwMaster
+            description: FwRouterSpec defines the desired state of FwRouter
             properties:
-              mgmtaddressrange:
-                items:
+              extensions:
+                additionalProperties:
                   type: string
-                type: array
-              regions:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
-                items:
-                  description: TODO Interfaceをenumで実装する
+                type: object
+              zones:
+                additionalProperties:
                   properties:
-                    regionname:
-                      type: string
-                    trustif:
+                    allowPrefixNames:
                       items:
                         type: string
                       type: array
-                    untrustif:
+                    interfaces:
+                      items:
+                        type: string
+                      type: array
+                    zonePolicy:
                       type: string
                   required:
-                  - regionname
-                  - trustif
-                  - untrustif
+                  - zonePolicy
                   type: object
-                type: array
+                type: object
             required:
-            - mgmtaddressrange
-            - regions
+            - zones
             type: object
           status:
-            description: FwMasterStatus defines the observed state of FwMaster
+            description: FwRouterStatus defines the observed state of FwRouter
             properties:
-              regions:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
-                items:
+              extensions:
+                additionalProperties:
+                  type: string
+                type: object
+              zones:
+                additionalProperties:
                   properties:
+                    allowPrefixNames:
+                      items:
+                        type: string
+                      type: array
                     created:
                       type: boolean
-                    mgmtaddressrange:
+                    interfaces:
                       items:
                         type: string
                       type: array
-                    regionname:
-                      type: string
-                    trustif:
-                      items:
-                        type: string
-                      type: array
-                    untrustif:
+                    zonePolicy:
                       type: string
                   required:
                   - created
-                  - mgmtaddressrange
-                  - regionname
-                  - trustif
-                  - untrustif
+                  - zonePolicy
                   type: object
-                type: array
+                type: object
             required:
-            - regions
+            - zones
             type: object
         type: object
     served: true

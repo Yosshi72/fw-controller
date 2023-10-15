@@ -18,199 +18,374 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	samplecontrollerv1 "github.com/Yosshi72/fw-controller/api/v1"
-	"github.com/Yosshi72/fw-controller/pkg/executer"
-	"github.com/Yosshi72/fw-controller/pkg/fwconfig"
-	"github.com/Yosshi72/fw-controller/pkg/util"
-	// "github.com/k0kubun/pp"
+	"github.com/k0kubun/pp"
+	vsix "github.com/wide-vsix/kloudnfv/api/v1"
+	"github.com/wide-vsix/kloudnfv/pkg/nft"
+	"github.com/wide-vsix/kloudnfv/pkg/util"
 )
 
-// FwLetReconciler reconciles a FwLet object
-type FwLetReconciler struct {
+// FwRouterReconciler reconciles a FwRouter object
+type FwRouterReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=samplecontroller.yossy.vsix.wide.ad.jp,resources=fwlets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=samplecontroller.yossy.vsix.wide.ad.jp,resources=fwlets/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=samplecontroller.yossy.vsix.wide.ad.jp,resources=fwlets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=vsix.wide.ad.jp,resources=fwrouters,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=vsix.wide.ad.jp,resources=fwrouters/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=vsix.wide.ad.jp,resources=fwrouters/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the FwLet object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
-func (r *FwLetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *FwRouterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	res := util.NewResult()
-	fwl := samplecontrollerv1.FwLet{}
-	region := os.Getenv("REGION")
+	name := os.Getenv("REGION")
+	nsname := os.Getenv("NSNAME")
 
-	if err := r.Get(ctx, req.NamespacedName, &fwl); err != nil {
+	fwrouter := vsix.FwRouter{}
+
+	if err := r.Get(ctx, req.NamespacedName, &fwrouter); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "msg", "line", util.LINE())
 		return ctrl.Result{}, err
 	}
+
 	// Ignore reconcile request unrelated to me
-	if fwl.GetName() != region {
+	if fwrouter.GetName() != name {
 		return ctrl.Result{}, nil
 	}
-	containerName := convContainerName(fwl.GetName())
-	// Finalizer
-	// finalizerName := "bg-switcherlet-" + fwl.Name
-	// if fwl.ObjectMeta.DeletionTimestamp.IsZero() {
-	// 	if !controllerutil.ContainsFinalizer(&fwl, finalizerName) {
-	// 		controllerutil.AddFinalizer(&fwl, finalizerName)
-	// 		res.SpecUpdated = true
-	// 	}
-	// } else {
-	// 	if controllerutil.ContainsFinalizer(&fwl, finalizerName) {
-	//		TODO:nsのnftablesのrulesを削除する. fw-letが消された場合．
-	// 		TODO:fw-masterが消されたらfw-letを消す
-	// 		controllerutil.RemoveFinalizer(&fwl, finalizerName)
-	// 		if err := r.Update(ctx, &fwl); err != nil {
-	// 			log.Error(err, "msg", "line", util.LINE())
-	// 			return ctrl.Result{}, err
-	// 		}
-	// 	}
-	// 	return ctrl.Result{}, nil
-	// }
 
-	trustIf, untrustIf, mgmtAddr, err := getConfig(containerName)
-	if err != nil {
-		log.Error(err, "msg", "line", util.LINE())
-		return ctrl.Result{}, err
-	}
-	if trustIf == nil && untrustIf == "" && mgmtAddr == nil {
-		fwl.Status.TrustIf = fwl.Spec.TrustIf
-		fwl.Status.UntrustIf = fwl.Spec.UntrustIf
-		fwl.Status.MgmtAddressRange = fwl.Spec.MgmtAddressRange
-		setConfig(containerName, fwl.Status.UntrustIf, fwl.Status.TrustIf, fwl.Status.MgmtAddressRange)
+	// fwrouterのspecとstatusでzoneの齟齬がないか
+	allok := true
+	for zoneNameSpec := range fwrouter.Spec.Zones {
+		foundZoneNameInStatus := false
+		for zoneNameStatus := range fwrouter.Status.Zones {
+			if zoneNameSpec == zoneNameStatus {
+				foundZoneNameInStatus = true
+			}
+		}
+		if !foundZoneNameInStatus {
+			if fwrouter.Status.Zones == nil {
+				fwrouter.Status.Zones = make(map[vsix.ZoneName]vsix.FwZoneStatus)
+			}
+			newZoneStatus := vsix.FwZoneStatus{
+				Interfaces:       fwrouter.Spec.Zones[zoneNameSpec].Interfaces,
+				Policy:           fwrouter.Spec.Zones[zoneNameSpec].Policy,
+				AllowPrefixNames: fwrouter.Spec.Zones[zoneNameSpec].AllowPrefixNames,
+				Created:          true,
+			}
+			fwrouter.Status.Zones[zoneNameSpec] = newZoneStatus
+			allok = false
+			res.StatusUpdated = true
+		}
 	}
 
-	trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
-
-	// Interfaceの更新
-	changedTrustIF := false
-	if !fwconfig.MatchElements(trustIf, fwl.Spec.TrustIf) {
-		newTrustIF := fwl.Spec.TrustIf
-		setConfig(containerName, untrustIf, newTrustIF, mgmtAddr)
-		changedTrustIF = true
+	if !allok {
+		if res.SpecUpdated {
+			if err := r.Update(ctx, &fwrouter); err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{Requeue: true}, err
+			}
+		}
+		if res.StatusUpdated {
+			if err := r.Status().Update(ctx, &fwrouter); err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{Requeue: true}, err
+			}
+		}
+		return ctrl.Result{Requeue: true}, nil
 	}
-	if changedTrustIF {
-		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
+
+	for zoneName, zoneStatus := range fwrouter.Status.Zones {
+		zoneSpec := fwrouter.Spec.Zones[zoneName]
+		currentIf, currentPolicy, _, err := getNftTables(nsname, zoneName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.TrustIf = trustIf
-		res.StatusUpdated = true
-	}
 
-	changedUntrustIF := false
-	if untrustIf != fwl.Spec.UntrustIf {
-		newUntrustIF := fwl.Spec.UntrustIf
-		setConfig(containerName, newUntrustIF, trustIf, mgmtAddr)
-		changedUntrustIF = true
-	}
-	if changedUntrustIF {
-		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
+		// nftablesの値とSpecの値を比較．
+		// 違いがあれば,Specの値でnftablesのアップデート.
+		// その後,nftablesの値でStatusアップデート.
+		// interfaceのチェック
+		iflag, pflag := false, false
+		if !util.MatchElements(currentIf, zoneSpec.Interfaces) {
+			addIf, delIf := util.CmpElements(zoneSpec.Interfaces, currentIf)
+			updateNftable(nsname, zoneName, addIf, delIf)
+			pp.Println("interface update.")
+			iflag = true
+		}
+		if iflag {
+			currentIf, _, _, err = getNftTables(nsname, zoneName)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			zoneStatus.Interfaces = currentIf
+			fwrouter.Status.Zones[zoneName] = zoneStatus
+			res.StatusUpdated = true
+		}
+		// policyのチェック
+		if currentPolicy != zoneSpec.Policy {
+			addPolicy, delPolicy := zoneSpec.Policy, currentPolicy
+			updateNftable(nsname, zoneName, addPolicy, delPolicy)
+			pp.Println("policy update.")
+			pflag = true
+		}
+		if pflag {
+			_, currentPolicy, _, err = getNftTables(nsname, zoneName)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			zoneStatus.Policy = currentPolicy
+			fwrouter.Status.Zones[zoneName] = zoneStatus
+			res.StatusUpdated = true
+		}
+
+		// allowPrefixNamesが更新された場合
+		preFlag := false
+		if !util.MatchElements(zoneStatus.AllowPrefixNames, zoneSpec.AllowPrefixNames) {
+			addPrefixNames, delPrefixNames := util.CmpElements(zoneSpec.AllowPrefixNames, zoneStatus.AllowPrefixNames)
+
+			// addPrefixNameと一致するprefix-nameのprefix-addressとdelPrefixNameのprefix-addressを取得
+			addPrefixAddress, err := r.getPrefixAddressList(ctx, req, addPrefixNames)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			delPrefixAddress, err := r.getPrefixAddressList(ctx, req, delPrefixNames)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			// これら二つのアドレスでCmpElementをして，追加すべきアドレスと消去すべきアドレスをゲット
+			addAddr, delAddr := util.CmpElements(addPrefixAddress, delPrefixAddress)
+
+			conn, fd, err := nft.InitConn(nsname)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			defer nft.CloseConn(fd)
+
+			// nftablesのアップデート
+			err = nft.UpdatePrefixAddressesList(conn, nsname, zoneName, addAddr, delAddr) 
+			pp.Println("prefix-name update.")
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			preFlag = true
+		}
+		if preFlag {
+			// TODO: nftableからsaddr取得して，SpecのAllowPrefixNamesに対応してるかチェック
+			_, _, _, _ = getNftTables(nsname, zoneName)
+
+			zoneStatus.AllowPrefixNames = zoneSpec.AllowPrefixNames
+			fwrouter.Status.Zones[zoneName] = zoneStatus
+			res.StatusUpdated = true
+		}
+
+		// fwprefixlistに変更があった場合
+		// nftablesからprefixAddressを取ってくる
+		_, _, currentPrefixAddress, err := getNftTables(nsname, zoneName)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.UntrustIf = untrustIf
-		res.StatusUpdated = true
-	}
-
-	changedMgmtAddr := false
-	if !fwconfig.MatchElements(mgmtAddr, fwl.Spec.MgmtAddressRange) {
-		newMgmtAddr := fwl.Spec.MgmtAddressRange
-		setConfig(containerName, untrustIf, trustIf, newMgmtAddr)
-		changedMgmtAddr = true
-	}
-	if changedMgmtAddr {
-		trustIf, untrustIf, mgmtAddr, err = getConfig(containerName)
+		newPrefixAddress, err := r.getPrefixAddressList(ctx, req, zoneStatus.AllowPrefixNames)
 		if err != nil {
 			log.Error(err, "msg", "line", util.LINE())
 			return ctrl.Result{}, err
 		}
-		fwl.Status.MgmtAddressRange = mgmtAddr
-		res.StatusUpdated = true
+		// nftablesの値とfwprefixのSpecのprefixAddressを比較
+		if !util.MatchElements(currentPrefixAddress, newPrefixAddress) {
+			addPrefixAddress, delPrefixAddress := util.CmpElements(newPrefixAddress, currentPrefixAddress)
+
+			conn, fd, err := nft.InitConn(nsname)
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+			defer nft.CloseConn(fd)
+
+			err = nft.UpdatePrefixAddressesList(conn, nsname, zoneName, addPrefixAddress, delPrefixAddress) 
+			pp.Println("prefix-address-list update.")
+			if err != nil {
+				log.Error(err, "msg", "line", util.LINE())
+				return ctrl.Result{}, err
+			}
+		}
 	}
 
 	if res.SpecUpdated {
-		if err := r.Update(ctx, &fwl); err != nil {
+		if err := r.Update(ctx, &fwrouter); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
-
 	if res.StatusUpdated {
-		if err := r.Status().Update(ctx, &fwl); err != nil {
+		if err := r.Status().Update(ctx, &fwrouter); err != nil {
 			log.Error(err, "msg", "line", util.LINE())
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func getConfig(containerName string) ([]string, string, []string, error) {
-	// TODO: config.jsonのパスを入れる
-	trustIn, untrustIn, mgmtAddr, err := fwconfig.RulesReader("/etc/nftables/fw.rule")
+// SetupWithManager sets up the controller with the Manager.
+func (r *FwRouterReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&vsix.FwRouter{}).
+		Watches(
+			&vsix.FwPrefixList{},
+			handler.EnqueueRequestsFromMapFunc(r.findFwRouterByPrefixName),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
+		Complete(r)
+}
 
+
+func (r *FwRouterReconciler) findFwRouterByPrefixName(ctx context.Context, prefixName client.Object) []reconcile.Request {
+	reqs := []reconcile.Request{}
+	// ctx := context.TODO()
+	log := log.FromContext(ctx)
+	namespace := prefixName.GetNamespace()
+	routerName := os.Getenv("REGION")
+
+	// get updated prefixName
+	updatedPrefix := vsix.FwPrefixList{}
+	updatedPrefixName := prefixName.GetName()
+	if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: prefixName.GetName()}, &updatedPrefix); err != nil {
+		// 対象のprefixNameが削除された
+		log.Info("PrefixList deleted: prefixName is ", updatedPrefixName)
+		reqs = append(reqs, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      routerName,
+				Namespace: namespace,
+			},
+		})
+		return reqs
+	}
+
+	// fwrouterを取得
+	fwrouter := vsix.FwRouter{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: routerName}, &fwrouter); err != nil{
+		log.Error(err, "msg", "line", util.LINE())
+		return reqs
+	}
+	specZones := fwrouter.Spec.Zones
+	for _, specZone := range specZones {
+		specPrefixNames := specZone.AllowPrefixNames
+		for _, prefixName := range specPrefixNames {
+			// udpateされたprefixListがrouterのAllowedPrefixNamesに含まれていたら
+			prefixName = strings.ToLower(prefixName)
+			if prefixName == updatedPrefixName {
+				reqs = append(reqs, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name: fwrouter.GetName(),
+						Namespace: fwrouter.GetNamespace(),
+					},
+				})
+			}
+		}
+	}
+	return reqs
+}
+func getNftTables(nsname string, zoneName vsix.ZoneName) ([]string, vsix.ZonePolicy, []string, error) {
+	conn, fd, err := nft.InitConn(nsname)
 	if err != nil {
 		return nil, "", nil, err
 	}
+	defer nft.CloseConn(fd)
 
-	return trustIn, untrustIn, mgmtAddr, nil
+	ifs, err := nft.GetInterfaces(conn, zoneName)
+	if err != nil {
+		return ifs, "", nil, err
+	}
+	policy, err := nft.GetPolicy(conn, zoneName)
+	if err != nil {
+		return ifs, policy, nil, err
+	}
+
+	addresses, err := nft.GetAddresses(conn, zoneName)
+	if err != nil {
+		return ifs, policy, addresses, err
+	}
+	return ifs, policy, addresses, nil
 }
 
-func setConfig(containerName, untrustif_name string, trustif_name, mgmtaddress []string) error {
-	// update fwconfig.json
-	err := fwconfig.RuleUpdate(
-		containerName,
-		"/etc/nftables/fw-template.rule",
-		"/etc/nftables/fw.rule",
-		untrustif_name,
-		trustif_name,
-		mgmtaddress,
-	)
+func updateNftable(nsname string, zoneName vsix.ZoneName, addElement interface{}, delElement interface{}) error {
+	if reflect.TypeOf(addElement) != reflect.TypeOf(delElement) {
+		err := fmt.Errorf("Type of addElement != Type of delElement")
+		return err
+	}
+
+	conn, fd, err := nft.InitConn(nsname)
 	if err != nil {
 		return err
 	}
-	err= executer.ExecCommand(
-		containerName,
-	)
-	return err
+	defer nft.CloseConn(fd)
+
+	switch addElement.(type) {
+	case []string:
+		addStrings, ok1 := addElement.([]string)
+		delStrings, ok2 := delElement.([]string)
+		if !ok1 || !ok2 {
+			return fmt.Errorf("Failed to cast to []string")
+		}
+		err := nft.UpdateInterfaces(nsname, conn, zoneName, addStrings, delStrings)
+		if err != nil {
+			msg := fmt.Errorf("Failed to update interfaces: %v", err)
+			return msg
+		}
+	case vsix.ZonePolicy:
+		newZonePolicy, ok1 := addElement.(vsix.ZonePolicy)
+		if !ok1 {
+			return fmt.Errorf("Failed to cast to vsix.ZonePolicy")
+		}
+		err := nft.UpdateZonePolicy(conn, zoneName, newZonePolicy)
+		if err != nil {
+			msg := fmt.Errorf("Failed to update zonepolicy: %v", err)
+			return msg
+		}
+	}
+	return nil
 }
 
-func convContainerName(rawName string) string {
-	runes := []rune(rawName)
-	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
-	runes[len(runes)-1] = []rune(strings.ToUpper(string(runes[len(runes)-1])))[0]
-	return string(runes)
-}
+// PrefixNameからPrefixAddressListを取得
+func (r *FwRouterReconciler) getPrefixAddressList(ctx context.Context, req ctrl.Request, prefixNames []string) ([]string, error) {
+	prefixList := &vsix.FwPrefixList{}
+	var prefixAddressList []string
+	for _, prefixName := range prefixNames {
+		prefixName = strings.ToLower(prefixName)
+		keys := client.ObjectKey{Namespace: req.Namespace, Name: prefixName}
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *FwLetReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&samplecontrollerv1.FwLet{}).
-		Complete(r)
+		if err := r.Get(ctx, keys, prefixList); err != nil {
+			msg := fmt.Errorf("Failed to get prefixAddressList: %v", err)
+			return nil, msg
+		}
+		prefixAddressList = append(prefixAddressList, prefixList.Spec.Prefixes...)
+	}
+
+	return prefixAddressList, nil
 }

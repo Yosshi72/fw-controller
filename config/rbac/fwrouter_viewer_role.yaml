@@ -1,31 +1,27 @@
-# permissions for end users to edit fwlets.
+# permissions for end users to view fwrouters.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: fwlet-editor-role
+    app.kubernetes.io/instance: fwrouter-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: fw-controller
     app.kubernetes.io/part-of: fw-controller
     app.kubernetes.io/managed-by: kustomize
-  name: fwlet-editor-role
+  name: fwrouter-viewer-role
 rules:
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwlets
+  - fwrouters
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwlets/status
+  - fwrouters/status
   verbs:
   - get

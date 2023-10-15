@@ -1,0 +1,55 @@
+apiVersion: vsix.wide.ad.jp/v1
+kind: FwRouter
+metadata:
+  labels:
+    app.kubernetes.io/name: fwrouter
+    app.kubernetes.io/instance: fwrouter-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: hongo
+spec:
+  zones: 
+    trust:
+      interfaces:
+        - eth0-hongo
+        - eth2-hongo
+      zonePolicy: "established-only"
+      allowPrefixNames:
+        # - vSIX
+        # - vSIX-MGMT
+    untrust:
+      interfaces:
+        - eth1-hongo
+        - eth3-hongo
+      zonePolicy: "all-permit"
+      allowPrefixNames:
+  extensions:
+
+--- 
+apiVersion: vsix.wide.ad.jp/v1
+kind: FwRouter
+metadata:
+  labels:
+    app.kubernetes.io/name: fwrouter
+    app.kubernetes.io/instance: fwrouter-sample
+    app.kubernetes.io/part-of: fw-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: fw-controller
+  name: komatsu
+spec:
+  zones: 
+    trust:
+      interfaces:
+        - eth0-komatsu
+        - eth2-komatsu
+      zonePolicy: "established-only"
+      allowPrefixNames:
+        - vSIX
+    untrust:
+      interfaces:
+        - eth1-komatsu
+        - eth3-komtasu
+      zonePolicy: "all-permit"
+      allowPrefixNames:
+  extensions:

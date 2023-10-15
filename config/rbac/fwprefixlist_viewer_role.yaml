@@ -1,27 +1,27 @@
-# permissions for end users to view fwmasters.
+# permissions for end users to view fwprefixlists.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: fwmaster-viewer-role
+    app.kubernetes.io/instance: fwprefixlist-viewer-role
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: fw-controller
     app.kubernetes.io/part-of: fw-controller
     app.kubernetes.io/managed-by: kustomize
-  name: fwmaster-viewer-role
+  name: fwprefixlist-viewer-role
 rules:
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwmasters
+  - fwprefixlists
   verbs:
   - get
   - list
   - watch
 - apiGroups:
-  - samplecontroller.yossy.vsix.wide.ad.jp
+  - vsix.wide.ad.jp
   resources:
-  - fwmasters/status
+  - fwprefixlists/status
   verbs:
   - get

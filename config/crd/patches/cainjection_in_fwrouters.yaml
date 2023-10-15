@@ -4,4 +4,4 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     cert-manager.io/inject-ca-from: CERTIFICATE_NAMESPACE/CERTIFICATE_NAME
-  name: fwmasters.samplecontroller.yossy.vsix.wide.ad.jp
+  name: fwrouters.vsix.wide.ad.jp

@@ -1,5 +1,5 @@
 ## Append samples of your project ##
 resources:
-- samplecontroller_v1_fwlet.yaml
-- samplecontroller_v1_fwmaster.yaml
+- _v1_fwprefixlist.yaml
+- _v1_fwrouter.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
